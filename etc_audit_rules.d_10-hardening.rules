@@ -1,0 +1,62 @@
+# ===== loader/setup =====
+-D                                # drop any existing rules (augenrules merges; -D is safe at top)
+-b 8192                           # backlog buffer
+-f 1                              # fail = log (2 would halt)
+# (kernel cmdline: audit=1 audit_backlog_limit=8192 recommended)
+
+# ===== time changes =====
+-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time-change
+-a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime -k time-change
+-w /etc/localtime -p wa -k time-change
+
+# ===== identity / hostname / domain =====
+-a always,exit -F arch=b64 -S sethostname,setdomainname -k identity
+-a always,exit -F arch=b32 -S sethostname,setdomainname -k identity
+-w /etc/issue -p wa -k identity
+-w /etc/hosts -p wa -k identity
+-w /etc/hostname -p wa -k identity
+-w /etc/resolve.conf -p wa -k identity
+
+# ===== kernel modules =====
+-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules
+-a always,exit -F arch=b32 -S init_module,delete_module -k modules
+-w /usr/lib/modules -p wa -k modules
+
+# ===== mounts / FS topology =====
+-a always,exit -F arch=b64 -S mount,umount2,pivot_root -k mount
+-a always,exit -F arch=b32 -S mount,umount2 -k mount
+
+# ===== file permission/ownership changes (by users) =====
+-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat,chown,fchown,fchownat,lchown,utime,utimes,utimensat \
+  -F auid>=1000 -F auid!=4294967295 -k perm-change
+-a always,exit -F arch=b32 -S chmod,fchmod,fchmodat,chown,fchown,fchownat,lchown,utime,utimes,utimensat \
+  -F auid>=1000 -F auid!=4294967295 -k perm-change
+
+# ===== file deletions/renames (by users) =====
+-a always,exit -F arch=b64 -S unlink,unlinkat,rename,renameat,renameat2 \
+  -F auid>=1000 -F auid!=4294967295 -k delete
+-a always,exit -F arch=b32 -S unlink,unlinkat,rename,renameat \
+  -F auid>=1000 -F auid!=4294967295 -k delete
+
+# ===== account / auth config files =====
+-w /etc/passwd    -p wa -k auth-files
+-w /etc/group     -p wa -k auth-files
+-w /etc/shadow    -p wa -k auth-files
+-w /etc/gshadow   -p wa -k auth-files
+-w /etc/sudoers   -p wa -k sudo
+-w /etc/sudoers.d -p wa -k sudo
+-w /etc/ssh/sshd_config -p wa -k ssh
+
+# ===== audit config integrity =====
+-w /etc/audit/ -p wa -k auditcfg
+-w /usr/sbin/auditd -p x -k auditd
+
+# ===== privileged escalation paths (exec sudo/su) =====
+-w /usr/bin/sudo -p x -k sudo
+-w /bin/su       -p x -k su
+
+# ===== discretionary: sensitive dirs (tweak to taste) =====
+# -w /root -p wa -k rootdir
+
+# ===== make rules immutable (last line) =====
+-e 2
